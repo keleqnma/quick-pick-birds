@@ -86,31 +86,29 @@ export default function Summary() {
     }
   }
 
-  const handleOpenHtml = () => {
-    if (htmlPath) {
-      window.open(`file://${htmlPath}`, '_blank')
-    }
-  }
-
-  const handleExport = (type: 'photos' | 'detections' | 'summary') => {
+  const handleExport = async (type: 'photos' | 'detections' | 'summary') => {
     if (!selectedSession) return
 
-    let downloadUrl = ''
-    if (type === 'photos') {
-      downloadUrl = exportApi.exportPhotos(selectedSession.id).downloadUrl
-    } else if (type === 'detections') {
-      downloadUrl = exportApi.exportDetections(selectedSession.id).downloadUrl
-    } else if (type === 'summary') {
-      downloadUrl = exportApi.exportSummary(selectedSession.id).downloadUrl
-    }
+    try {
+      const exportFn = {
+        photos: exportApi.exportPhotos,
+        detections: exportApi.exportDetections,
+        summary: exportApi.exportSummary
+      }[type]
 
-    // 触发下载
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.setAttribute('download', '')
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+      const result = await exportFn(selectedSession.id)
+
+      // 触发下载
+      const link = document.createElement('a')
+      link.href = result.downloadUrl
+      link.setAttribute('download', '')
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('导出失败:', error)
+      alert('导出失败，请重试')
+    }
   }
 
   const formatDate = (dateStr: string) => {

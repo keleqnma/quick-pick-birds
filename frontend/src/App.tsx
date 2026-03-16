@@ -12,6 +12,8 @@ import Checklists from './pages/Checklists'
 import SpeciesExplorer from './pages/SpeciesExplorer'
 import HotspotsMap from './pages/HotspotsMap'
 import LocationSubscriptions from './pages/LocationSubscriptions'
+import Achievements from './pages/Achievements'
+import AnnualReport from './pages/AnnualReport'
 
 function NavBar() {
   const location = useLocation()
@@ -55,6 +57,8 @@ function App() {
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/summary" element={<Summary />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/achievements" element={<Achievements />} />
+          <Route path="/annual-report" element={<AnnualReport />} />
         </Routes>
       </main>
     </BrowserRouter>

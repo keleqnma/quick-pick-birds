@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { achievementsApi } from '../api/api'
 
 interface Achievement {
   id: string
@@ -38,18 +39,14 @@ export default function Achievements() {
   const loadData = async () => {
     setLoading(true)
     try {
-      // 加载成就
-      const response = await fetch('http://localhost:8000/api/leaderboard/achievements/check')
-      const data = await response.json()
-      setAchievements(data.achievements || [])
-      setUnlockedCount(data.unlocked_count || 0)
-      setTotalCount(data.total_count || 0)
-      setProgress(data.progress || 0)
+      const data = await achievementsApi.getAchievements()
+      setAchievements(data.data.achievements || [])
+      setUnlockedCount(data.data.unlocked_count || 0)
+      setTotalCount(data.data.total_count || 0)
+      setProgress(data.data.progress || 0)
 
-      // 加载统计
-      const statsResponse = await fetch('http://localhost:8000/api/leaderboard/achievements/stats')
-      const statsData = await statsResponse.json()
-      setStats(statsData)
+      const statsData = await achievementsApi.getStats()
+      setStats(statsData.data)
     } catch (error) {
       console.error('加载成就失败:', error)
     } finally {

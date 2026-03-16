@@ -9,6 +9,8 @@ interface Species {
   family_en?: string
   order_cn?: string
   order_en?: string
+  genus_cn?: string
+  genus_en?: string
   conservation_level?: string
   china_endemic: boolean
   common: boolean

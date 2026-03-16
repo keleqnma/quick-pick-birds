@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { subscriptionsApi } from '../api/api'
 
 interface Subscription {
   id: number
@@ -39,9 +40,8 @@ export default function LocationSubscriptions() {
   const loadSubscriptions = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`http://localhost:8000/api/hotspots/subscriptions?user_name=${encodeURIComponent(userName)}`)
-      const data = await response.json()
-      setSubscriptions(data.subscriptions || [])
+      const data = await subscriptionsApi.getSubscriptions(userName)
+      setSubscriptions(data.data.subscriptions || [])
     } catch (error) {
       console.error('加载订阅失败:', error)
     } finally {
@@ -52,18 +52,13 @@ export default function LocationSubscriptions() {
   const handleCreateSubscription = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('http://localhost:8000/api/hotspots/subscription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_name: userName,
-          ...newSubscription,
-          gps_lat: newSubscription.gps_lat ? parseFloat(newSubscription.gps_lat) : null,
-          gps_lng: newSubscription.gps_lng ? parseFloat(newSubscription.gps_lng) : null
-        })
+      const data = await subscriptionsApi.createSubscription({
+        user_name: userName,
+        ...newSubscription,
+        gps_lat: newSubscription.gps_lat ? parseFloat(newSubscription.gps_lat) : undefined,
+        gps_lng: newSubscription.gps_lng ? parseFloat(newSubscription.gps_lng) : undefined
       })
-      const data = await response.json()
-      if (data.id) {
+      if (data.data.id) {
         alert('订阅创建成功!')
         setShowForm(false)
         setNewSubscription({
@@ -86,12 +81,8 @@ export default function LocationSubscriptions() {
 
   const handleToggleSubscription = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/hotspots/subscription/${id}/toggle`, {
-        method: 'PUT'
-      })
-      if (response.ok) {
-        loadSubscriptions()
-      }
+      await subscriptionsApi.toggleSubscription(id)
+      loadSubscriptions()
     } catch (error) {
       console.error('切换订阅状态失败:', error)
     }
@@ -100,12 +91,8 @@ export default function LocationSubscriptions() {
   const handleDeleteSubscription = async (id: number) => {
     if (!confirm('确定要删除这个订阅吗？')) return
     try {
-      const response = await fetch(`http://localhost:8000/api/hotspots/subscription/${id}`, {
-        method: 'DELETE'
-      })
-      if (response.ok) {
-        loadSubscriptions()
-      }
+      await subscriptionsApi.deleteSubscription(id)
+      loadSubscriptions()
     } catch (error) {
       console.error('删除订阅失败:', error)
     }

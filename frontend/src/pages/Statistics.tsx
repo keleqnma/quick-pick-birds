@@ -14,7 +14,6 @@ export default function Statistics() {
   const [monthlyData, setMonthlyData] = useState<any[]>([])
   const [topSpecies, setTopSpecies] = useState<any[]>([])
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [showAnnualReport, setShowAnnualReport] = useState(false)
 
   useEffect(() => {
     loadStatistics()
@@ -40,7 +39,7 @@ export default function Statistics() {
 
       // 加载热门物种
       const top = await statsApi.getTopSpecies(10)
-      setTopSpecies(top)
+      setTopSpecies(top.data)
     } catch (err: any) {
       console.error('Failed to load statistics:', err)
     } finally {
@@ -152,12 +151,12 @@ export default function Statistics() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ species_cn, percentage }) => `${species_cn}: ${percentage}%`}
+                  label={(entry: any) => `${entry.species_cn}: ${entry.percentage}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {speciesData.map((entry, index) => (
+                  {speciesData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

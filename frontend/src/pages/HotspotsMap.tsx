@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import { hotspotsApi } from '../api/api'
 
 interface Hotspot {
   id: number
@@ -43,7 +44,6 @@ function MapCenter({ lat, lng, zoom }: MapCenterProps) {
 export default function HotspotsMap() {
   const [loading, setLoading] = useState(true)
   const [hotspots, setHotspots] = useState<Hotspot[]>([])
-  const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null)
   const [mapCenter, setMapCenter] = useState({ lat: 35.8617, lng: 104.1954, zoom: 4 })
   const [showForm, setShowForm] = useState(false)
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null)
@@ -64,9 +64,8 @@ export default function HotspotsMap() {
   const loadHotspots = async () => {
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:8000/api/hotspots/hotspots?limit=100')
-      const data = await response.json()
-      setHotspots(data.hotspots || [])
+      const data = await hotspotsApi.getHotspots(100)
+      setHotspots(data.data.hotspots || [])
     } catch (error) {
       console.error('加载热点失败:', error)
     } finally {
@@ -95,9 +94,8 @@ export default function HotspotsMap() {
 
   const loadNearbyHotspots = async (lat: number, lng: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/hotspots/hotspots/recommended?lat=${lat}&lng=${lng}&limit=20`)
-      const data = await response.json()
-      setHotspots(data.recommended || [])
+      const data = await hotspotsApi.getRecommended(lat, lng, 20)
+      setHotspots(data.data.recommended || [])
     } catch (error) {
       console.error('加载附近热点失败:', error)
     }
@@ -106,17 +104,12 @@ export default function HotspotsMap() {
   const handleCreateHotspot = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('http://localhost:8000/api/hotspots/hotspot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newHotspot,
-          gps_lat: parseFloat(newHotspot.gps_lat),
-          gps_lng: parseFloat(newHotspot.gps_lng)
-        })
+      const data = await hotspotsApi.createHotspot({
+        ...newHotspot,
+        gps_lat: parseFloat(newHotspot.gps_lat),
+        gps_lng: parseFloat(newHotspot.gps_lng)
       })
-      const data = await response.json()
-      if (data.id) {
+      if (data.data.id) {
         alert('热点创建成功!')
         setShowForm(false)
         setNewHotspot({
@@ -129,16 +122,6 @@ export default function HotspotsMap() {
       console.error('创建热点失败:', error)
       alert('创建失败，请重试')
     }
-  }
-
-  const handleMapClick = (e: any) => {
-    const { lat, lng } = e.latlng
-    setNewHotspot(prev => ({
-      ...prev,
-      gps_lat: lat.toFixed(6),
-      gps_lng: lng.toFixed(6)
-    }))
-    setShowForm(true)
   }
 
   if (loading) {
@@ -190,7 +173,6 @@ export default function HotspotsMap() {
             center={[mapCenter.lat, mapCenter.lng]}
             zoom={mapCenter.zoom}
             style={{ height: '100%', width: '100%' }}
-            onClick={handleMapClick}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -217,9 +199,6 @@ export default function HotspotsMap() {
                 key={hotspot.id}
                 position={[hotspot.gps_lat, hotspot.gps_lng]}
                 icon={birdIcon}
-                eventHandlers={{
-                  click: () => setSelectedHotspot(hotspot)
-                }}
               >
                 <Popup>
                   <div style={{ minWidth: '200px' }}>

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { statsApi } from '../api/api'
 
 const MONTHS = ['1 月', '2 月', '3 月', '4 月', '5 月', '6 月', '7 月', '8 月', '9 月', '10 月', '11 月', '12 月']
-const COLORS = ['#4F81BD', '#C0504E', '#9BBB58', '#8064A2', '#4AACC5', '#F79646', '#815E87', '#76A035', '#3465A4', '#B74D29']
 
 export default function AnnualReport() {
   const [loading, setLoading] = useState(true)
@@ -22,8 +22,7 @@ export default function AnnualReport() {
   const loadReport = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`http://localhost:8000/api/stats/annual-report?year=${year}`)
-      const data = await response.json()
+      const data = await statsApi.getAnnualReport(year)
       setReport(data)
     } catch (error) {
       console.error('加载年度报告失败:', error)

@@ -74,7 +74,7 @@ export function groupBurstPhotos(photos: Photo[], thresholdSeconds: number = 3):
 function createGroup(photos: Photo[]): BurstGroup {
   const startTime = photos[0].capture_time || new Date().toISOString()
   const endTime = photos[photos.length - 1].capture_time || new Date().toISOString()
-  const _timeSpanSeconds = (new Date(endTime).getTime() - new Date(startTime).getTime()) / 1000
+  const timeSpanSeconds = (new Date(endTime).getTime() - new Date(startTime).getTime()) / 1000
 
   return {
     group_id: `burst_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -82,7 +82,7 @@ function createGroup(photos: Photo[]): BurstGroup {
     photo_count: photos.length,
     start_time: startTime,
     end_time: endTime,
-    time_span_seconds: _timeSpanSeconds,
+    time_span_seconds: timeSpanSeconds,
     cover_photo: photos[0],
   }
 }

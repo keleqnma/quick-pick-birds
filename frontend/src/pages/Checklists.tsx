@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { exportApi, statsApi } from '../api/api'
 
 interface Checklist {
   id: number
@@ -206,12 +205,6 @@ export default function Checklists() {
     } catch (error) {
       console.error('删除失败:', error)
     }
-  }
-
-  const protocolLabels: Record<string, string> = {
-    incidental: '偶然观测',
-    traveling: '行进式',
-    stationary: '定点观测',
   }
 
   return (

@@ -13,25 +13,7 @@ export default function Map() {
     setLoading(true)
     setHeatmapMode(false)
     try {
-      // 模拟照片位置数据 - 实际应用中会从后端获取
-      const mockLocations = [
-        {
-          file_path: '/photos/bird1.jpg',
-          gps_lat: 39.9042,
-          gps_lon: 116.4074,
-          capture_time: new Date().toISOString(),
-          bird_species: '麻雀',
-        },
-        {
-          file_path: '/photos/bird2.jpg',
-          gps_lat: 39.9142,
-          gps_lon: 116.4174,
-          capture_time: new Date().toISOString(),
-          bird_species: '鸽子',
-        },
-      ]
-
-      const response = await mapApi.getDailyMap(mapDate, mockLocations)
+      const response = await mapApi.getDailyMap(mapDate)
       setMapData(response.data)
       if (response.data.map_html) {
         setMapHtml(response.data.map_html)
@@ -56,14 +38,6 @@ export default function Map() {
       console.error('Failed to load heatmap:', err)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const toggleHeatmap = () => {
-    if (heatmapMode) {
-      loadDailyMap()
-    } else {
-      loadHeatmap()
     }
   }
 

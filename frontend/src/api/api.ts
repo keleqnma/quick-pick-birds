@@ -401,6 +401,104 @@ export const statsApi = {
       throw new Error(`获取总览统计失败：${response.statusText}`)
     }
     return { data: await response.json() }
+  },
+
+  getAnnualReport: async (year: number) => {
+    const response = await fetch(`${API_BASE_URL}/api/stats/annual-report?year=${year}`)
+    if (!response.ok) {
+      throw new Error(`获取年度报告失败：${response.statusText}`)
+    }
+    return { data: await response.json() }
+  }
+}
+
+export const achievementsApi = {
+  getAchievements: async () => {
+    const response = await fetch(`${API_BASE_URL}/api/leaderboard/achievements/check`)
+    if (!response.ok) {
+      throw new Error(`获取成就失败：${response.statusText}`)
+    }
+    return { data: await response.json() }
+  },
+
+  getStats: async () => {
+    const response = await fetch(`${API_BASE_URL}/api/leaderboard/achievements/stats`)
+    if (!response.ok) {
+      throw new Error(`获取统计失败：${response.statusText}`)
+    }
+    return { data: await response.json() }
+  }
+}
+
+export const hotspotsApi = {
+  getHotspots: async (limit: number = 100) => {
+    const response = await fetch(`${API_BASE_URL}/api/hotspots/hotspots?limit=${limit}`)
+    if (!response.ok) {
+      throw new Error(`获取热点失败：${response.statusText}`)
+    }
+    return { data: await response.json() }
+  },
+
+  getRecommended: async (lat: number, lng: number, limit: number = 20) => {
+    const response = await fetch(`${API_BASE_URL}/api/hotspots/hotspots/recommended?lat=${lat}&lng=${lng}&limit=${limit}`)
+    if (!response.ok) {
+      throw new Error(`获取推荐热点失败：${response.statusText}`)
+    }
+    return { data: await response.json() }
+  },
+
+  createHotspot: async (hotspot: { name: string; description: string; gps_lat: number; gps_lng: number; city?: string; province?: string; habitat_type?: string }) => {
+    const response = await fetch(`${API_BASE_URL}/api/hotspots/hotspot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(hotspot)
+    })
+    if (!response.ok) {
+      throw new Error(`创建热点失败：${response.statusText}`)
+    }
+    return { data: await response.json() }
+  }
+}
+
+export const subscriptionsApi = {
+  getSubscriptions: async (userName: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/hotspots/subscriptions?user_name=${encodeURIComponent(userName)}`)
+    if (!response.ok) {
+      throw new Error(`获取订阅失败：${response.statusText}`)
+    }
+    return { data: await response.json() }
+  },
+
+  createSubscription: async (subscription: { user_name: string; location_name: string; radius_km: number; min_species_count: number; gps_lat?: number; gps_lng?: number; notification_enabled?: boolean; email_enabled?: boolean; wechat_enabled?: boolean }) => {
+    const response = await fetch(`${API_BASE_URL}/api/hotspots/subscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(subscription)
+    })
+    if (!response.ok) {
+      throw new Error(`创建订阅失败：${response.statusText}`)
+    }
+    return { data: await response.json() }
+  },
+
+  toggleSubscription: async (id: number) => {
+    const response = await fetch(`${API_BASE_URL}/api/hotspots/subscription/${id}/toggle`, {
+      method: 'PUT'
+    })
+    if (!response.ok) {
+      throw new Error(`切换订阅状态失败：${response.statusText}`)
+    }
+    return { data: await response.json() }
+  },
+
+  deleteSubscription: async (id: number) => {
+    const response = await fetch(`${API_BASE_URL}/api/hotspots/subscription/${id}`, {
+      method: 'DELETE'
+    })
+    if (!response.ok) {
+      throw new Error(`删除订阅失败：${response.statusText}`)
+    }
+    return { data: await response.json() }
   }
 }
 
@@ -455,5 +553,8 @@ export default {
   summaryApi,
   exportApi,
   statsApi,
+  achievementsApi,
+  hotspotsApi,
+  subscriptionsApi,
   checkBackend
 }
