@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/uploads:/app/uploads
+      - ./backend/models:/app/models
+      # 挂载照片文件夹（修改为实际路径）
+      - ${RAW_PHOTO_DIR:-/data/photos}:/data/photos
+    environment:
+      - RAW_PHOTO_DIR=/data/photos
+      - DEBUG=true
+    restart: unless-stopped
+    networks:
+      - quickpick-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - quickpick-network
+
+networks:
+  quickpick-network:
+    driver: bridge
