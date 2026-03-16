@@ -93,6 +93,63 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_detections_species ON bird_detections(species_cn)
     """)
 
+    # 观测清单表 - 记录每次观鸟活动的完整清单 (参照 eBird Checklist)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS checklists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            checklist_date TEXT NOT NULL,
+            location_name TEXT NOT NULL,
+            gps_lat REAL,
+            gps_lng REAL,
+            start_time TEXT,
+            duration_minutes INTEGER,
+            protocol TEXT DEFAULT 'incidental',
+            effort_distance_km REAL,
+            observer_name TEXT,
+            weather TEXT,
+            temperature REAL,
+            wind TEXT,
+            total_species INTEGER DEFAULT 0,
+            total_individuals INTEGER DEFAULT 0,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_checklists_date ON checklists(checklist_date)
+    """)
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_checklists_location ON checklists(location_name)
+    """)
+
+    # 清单项表 - 记录清单中的每个鸟种
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS checklist_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            checklist_id INTEGER NOT NULL,
+            species_cn TEXT NOT NULL,
+            species_en TEXT,
+            scientific_name TEXT,
+            count INTEGER DEFAULT 1,
+            sex TEXT,
+            age TEXT,
+            behavior TEXT,
+            breeding_code TEXT,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (checklist_id) REFERENCES checklists(id) ON DELETE CASCADE
+        )
+    """)
+
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_checklist_items_checklist ON checklist_items(checklist_id)
+    """)
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_checklist_items_species ON checklist_items(species_cn)
+    """)
+
     conn.commit()
     conn.close()
 
@@ -346,6 +403,263 @@ def get_calendar_data(year: int, month: int) -> List[Dict[str, Any]]:
     rows = c.fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+
+# ==================== Checklist CRUD ====================
+
+def create_checklist(checklist_date: str, location_name: str,
+                     gps_lat: float = None, gps_lng: float = None,
+                     start_time: str = None, duration_minutes: int = None,
+                     protocol: str = "incidental", effort_distance_km: float = None,
+                     observer_name: str = None, weather: str = None,
+                     temperature: float = None, wind: str = None,
+                     notes: str = None) -> int:
+    """创建观测清单"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO checklists (checklist_date, location_name, gps_lat, gps_lng,
+                                start_time, duration_minutes, protocol, effort_distance_km,
+                                observer_name, weather, temperature, wind, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (checklist_date, location_name, gps_lat, gps_lng, start_time,
+          duration_minutes, protocol, effort_distance_km, observer_name,
+          weather, temperature, wind, notes))
+    checklist_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return checklist_id
+
+
+def get_checklist(checklist_id: int) -> Optional[Dict[str, Any]]:
+    """获取清单详情"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM checklists WHERE id = ?", (checklist_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return None
+
+
+def get_checklist_with_items(checklist_id: int) -> Optional[Dict[str, Any]]:
+    """获取清单及其所有项"""
+    conn = get_connection()
+    c = conn.cursor()
+
+    # 获取清单主记录
+    c.execute("SELECT * FROM checklists WHERE id = ?", (checklist_id,))
+    checklist = c.fetchone()
+    if not checklist:
+        conn.close()
+        return None
+
+    checklist_dict = dict(checklist)
+
+    # 获取清单项
+    c.execute("""
+        SELECT * FROM checklist_items
+        WHERE checklist_id = ?
+        ORDER BY species_cn
+    """, (checklist_id,))
+    items = c.fetchall()
+    checklist_dict["items"] = [dict(item) for item in items]
+
+    # 统计
+    total_species = len(items)
+    total_individuals = sum(item["count"] for item in items)
+    checklist_dict["total_species"] = total_species
+    checklist_dict["total_individuals"] = total_individuals
+
+    # 更新统计
+    c.execute("""
+        UPDATE checklists
+        SET total_species = ?, total_individuals = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (total_species, total_individuals, checklist_id))
+    conn.commit()
+    conn.close()
+
+    return checklist_dict
+
+
+def list_checklists(year: int = None, month: int = None,
+                    location: str = None, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+    """获取清单列表（支持筛选）"""
+    conn = get_connection()
+    c = conn.cursor()
+
+    query = "SELECT * FROM checklists WHERE 1=1"
+    params = []
+
+    if year:
+        query += " AND strftime('%Y', checklist_date) = ?"
+        params.append(str(year))
+    if month:
+        query += " AND strftime('%Y-%m', checklist_date) = ?"
+        params.append(f"{year}-{month:02d}")
+    if location:
+        query += " AND location_name LIKE ?"
+        params.append(f"%{location}%")
+
+    query += " ORDER BY checklist_date DESC LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
+
+    c.execute(query, params)
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def update_checklist(checklist_id: int, **kwargs):
+    """更新清单信息"""
+    conn = get_connection()
+    c = conn.cursor()
+
+    allowed_fields = ["location_name", "gps_lat", "gps_lng", "start_time",
+                      "duration_minutes", "protocol", "effort_distance_km",
+                      "observer_name", "weather", "temperature", "wind", "notes"]
+
+    for field in allowed_fields:
+        if field in kwargs and kwargs[field] is not None:
+            c.execute(f"UPDATE checklists SET {field} = ? WHERE id = ?",
+                      (kwargs[field], checklist_id))
+
+    c.execute("UPDATE checklists SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+              (checklist_id,))
+    conn.commit()
+    conn.close()
+
+
+def delete_checklist(checklist_id: int):
+    """删除清单（级联删除清单项）"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM checklists WHERE id = ?", (checklist_id,))
+    conn.commit()
+    conn.close()
+
+
+def save_checklist_item(checklist_id: int, species_cn: str,
+                        species_en: str = None, scientific_name: str = None,
+                        count: int = 1, sex: str = None, age: str = None,
+                        behavior: str = None, breeding_code: str = None,
+                        notes: str = None) -> int:
+    """保存清单项"""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO checklist_items (checklist_id, species_cn, species_en, scientific_name,
+                                     count, sex, age, behavior, breeding_code, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (checklist_id, species_cn, species_en, scientific_name,
+          count, sex, age, behavior, breeding_code, notes))
+    item_id = c.lastrowid
+
+    # 更新清单统计
+    _update_checklist_stats(conn, checklist_id)
+    conn.commit()
+    conn.close()
+    return item_id
+
+
+def save_checklist_items_batch(items_data: List[Dict[str, Any]]):
+    """批量保存清单项"""
+    conn = get_connection()
+    c = conn.cursor()
+
+    checklist_ids = set(item["checklist_id"] for item in items_data)
+
+    c.executemany("""
+        INSERT INTO checklist_items (checklist_id, species_cn, species_en, scientific_name,
+                                     count, sex, age, behavior, breeding_code, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, [(item.get("checklist_id"), item.get("species_cn"), item.get("species_en"),
+           item.get("scientific_name"), item.get("count", 1), item.get("sex"),
+           item.get("age"), item.get("behavior"), item.get("breeding_code"),
+           item.get("notes")) for item in items_data])
+
+    # 更新所有相关清单的统计
+    for checklist_id in checklist_ids:
+        _update_checklist_stats(conn, checklist_id)
+
+    conn.commit()
+    conn.close()
+
+
+def delete_checklist_item(item_id: int):
+    """删除清单项"""
+    conn = get_connection()
+    c = conn.cursor()
+
+    # 先获取 checklist_id
+    c.execute("SELECT checklist_id FROM checklist_items WHERE id = ?", (item_id,))
+    row = c.fetchone()
+    if row:
+        checklist_id = row[0]
+        c.execute("DELETE FROM checklist_items WHERE id = ?", (item_id,))
+        _update_checklist_stats(conn, checklist_id)
+
+    conn.commit()
+    conn.close()
+
+
+def _update_checklist_stats(conn, checklist_id: int):
+    """更新清单统计（内部函数）"""
+    c = conn.cursor()
+    c.execute("""
+        SELECT COUNT(*), SUM(count)
+        FROM checklist_items
+        WHERE checklist_id = ?
+    """, (checklist_id,))
+    row = c.fetchone()
+    total_species = row[0] or 0
+    total_individuals = row[1] or 0
+
+    c.execute("""
+        UPDATE checklists
+        SET total_species = ?, total_individuals = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (total_species, total_individuals, checklist_id))
+
+
+def get_checklist_stats() -> Dict[str, Any]:
+    """获取清单统计"""
+    conn = get_connection()
+    c = conn.cursor()
+
+    # 总清单数
+    c.execute("SELECT COUNT(*) FROM checklists")
+    total_checklists = c.fetchone()[0]
+
+    # 总观测物种数（去重）
+    c.execute("SELECT COUNT(DISTINCT species_cn) FROM checklist_items")
+    total_species = c.fetchone()[0]
+
+    # 总观测个体数
+    c.execute("""
+        SELECT SUM(count) FROM checklist_items
+    """)
+    total_individuals = c.fetchone()[0] or 0
+
+    # 最近清单
+    c.execute("""
+        SELECT id, checklist_date, location_name, total_species
+        FROM checklists
+        ORDER BY checklist_date DESC
+        LIMIT 5
+    """)
+    recent_checklists = [dict(row) for row in c.fetchall()]
+
+    conn.close()
+
+    return {
+        "total_checklists": total_checklists or 0,
+        "total_species": total_species or 0,
+        "total_individuals": total_individuals or 0,
+        "recent_checklists": recent_checklists
+    }
 
 
 def get_yearly_summary(year: int) -> Dict[str, Any]:

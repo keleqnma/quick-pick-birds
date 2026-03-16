@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 
-from app.api import scan, birds, map_endpoint, llm_identify, scoring, summary, export, stats
+from app.api import scan, birds, map_endpoint, llm_identify, scoring, summary, export, stats, checklist
 
 
 class Settings(BaseSettings):
@@ -49,6 +49,7 @@ app.include_router(scoring.router, prefix="/api/scoring", tags=["智能筛图"])
 app.include_router(summary.router, prefix="/api/summary", tags=["观鸟小结"])
 app.include_router(export.router, prefix="/api/export", tags=["数据导出"])
 app.include_router(stats.router, prefix="/api/stats", tags=["统计图表"])
+app.include_router(checklist.router, prefix="/api/checklist", tags=["观测清单"])
 
 
 @app.get("/")
@@ -79,6 +80,10 @@ async def root():
             "/api/stats/location-frequency - 获取观测地点频率",
             "/api/stats/top-species - 获取热门物种排行榜",
             "/api/stats/camera-stats - 获取相机使用统计",
+            "/api/checklist/checklist - 创建观测清单",
+            "/api/checklist/checklists - 获取观测清单列表",
+            "/api/checklist/checklist/{id} - 获取观测清单详情",
+            "/api/checklist/checklist/stats - 获取观测清单统计",
         ]
     }
 
