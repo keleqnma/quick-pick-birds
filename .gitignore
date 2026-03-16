@@ -42,3 +42,8 @@ models/
 *.pth
 *.pt
 *.onnx
+
+# Database
+*.db
+*.sqlite
+*.sqlite3

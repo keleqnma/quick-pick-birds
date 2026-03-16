@@ -102,6 +102,21 @@ quick-pick-birds/
 ### 地图
 - `POST /api/map/generate` - 生成观鸟地图
 - `GET /api/map/daily` - 获取当日地图
+- `GET /api/map/heatmap` - 获取观鸟热力图（新增）
+
+### 数据导出 (新增)
+- `GET /api/export/photos` - 导出照片数据为 Excel/CSV
+- `GET /api/export/detections` - 导出鸟类检测数据为 Excel/CSV
+- `GET /api/export/summary` - 导出会话汇总报告
+
+### 统计图表 (新增)
+- `GET /api/stats/overview` - 获取总体统计数据
+- `GET /api/stats/species-distribution` - 获取物种分布数据（饼图）
+- `GET /api/stats/monthly-trend` - 获取月度观测趋势（柱状图）
+- `GET /api/stats/daily-activity` - 获取每日活动热力数据
+- `GET /api/stats/location-frequency` - 获取观测地点频率（条形图）
+- `GET /api/stats/top-species` - 获取热门物种排行榜
+- `GET /api/stats/camera-stats` - 获取相机使用统计
 
 ### 观鸟小结 (新增)
 - `POST /api/summary/generate-summary` - 生成 HTML 小结
@@ -242,6 +257,20 @@ npm run electron
 2. 切换年/月视图
 3. 点击有记录的日期查看详情
 
+### 导出 Excel 报表 (新增)
+
+1. 进入「小结」页面
+2. 选择观测会话
+3. 点击「导出照片」、「导出检测」或「导出汇总」按钮
+4. 自动下载 Excel 文件
+
+### 查看统计图表 (新增)
+
+1. 进入「统计」页面
+2. 选择年份
+3. 查看物种分布饼图、月度趋势柱状图、观测天数折线图
+4. 查看热门物种排行榜
+
 ---
 
 ## 新增功能实现清单
@@ -269,6 +298,16 @@ npm run electron
 - [x] `frontend/src/pages/Calendar.tsx` - 日历页面
 - [x] 年/月/日视图切换
 - [x] `frontend/src/index.css` - 日历样式
+
+### Phase 5: 功能增强 ✅ (2026-03-16)
+- [x] `backend/app/api/export.py` - 数据导出 API
+- [x] `backend/app/api/stats.py` - 统计图表 API
+- [x] `backend/app/main.py` - 注册 export 和 stats 路由
+- [x] `frontend/src/pages/Statistics.tsx` - 统计页面
+- [x] `frontend/src/pages/Map.tsx` - 添加热力图切换
+- [x] `frontend/src/App.tsx` - 添加统计路由
+- [x] `frontend/src/api/api.ts` - 添加 exportApi 和 statsApi
+- [x] 安装依赖：`openpyxl` (Python), `recharts` (React)
 
 ---
 

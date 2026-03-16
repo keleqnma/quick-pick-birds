@@ -62,12 +62,23 @@ async def root():
             "/api/birds/identify - 识别照片中的鸟类",
             "/api/map/generate - 生成观鸟地图",
             "/api/map/daily - 获取当日的观鸟地图",
+            "/api/map/heatmap - 获取观鸟热力图",
             "/api/scoring/batch-score - 批量评分照片质量",
             "/api/scoring/criteria/defaults - 获取默认评分权重",
             "/api/summary/generate-summary - 生成观鸟小结 HTML",
             "/api/summary/calendar/{year}/{month} - 获取日历数据",
             "/api/summary/sessions - 获取观测会话列表",
             "/api/summary/species/list - 获取物种列表",
+            "/api/export/photos - 导出照片数据为 Excel/CSV",
+            "/api/export/detections - 导出鸟类检测数据为 Excel/CSV",
+            "/api/export/summary - 导出会话汇总报告",
+            "/api/stats/overview - 获取总体统计数据",
+            "/api/stats/species-distribution - 获取物种分布数据",
+            "/api/stats/monthly-trend - 获取月度观测趋势",
+            "/api/stats/daily-activity - 获取每日活动热力数据",
+            "/api/stats/location-frequency - 获取观测地点频率",
+            "/api/stats/top-species - 获取热门物种排行榜",
+            "/api/stats/camera-stats - 获取相机使用统计",
         ]
     }
 
