@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 
-from app.api import scan, birds, map_endpoint, llm_identify, scoring, summary, export, stats, checklist, species
+from app.api import scan, birds, map_endpoint, llm_identify, scoring, summary, export, stats, checklist, species, leaderboard, hotspots
 
 
 class Settings(BaseSettings):
@@ -51,6 +51,8 @@ app.include_router(export.router, prefix="/api/export", tags=["数据导出"])
 app.include_router(stats.router, prefix="/api/stats", tags=["统计图表"])
 app.include_router(checklist.router, prefix="/api/checklist", tags=["观测清单"])
 app.include_router(species.router, prefix="/api/species", tags=["物种百科"])
+app.include_router(leaderboard.router, prefix="/api/leaderboard", tags=["排行榜成就"])
+app.include_router(hotspots.router, prefix="/api/hotspots", tags=["热点地图"])
 
 
 @app.get("/")
@@ -91,6 +93,15 @@ async def root():
             "/api/species/families - 获取所有科",
             "/api/species/orders - 获取所有目",
             "/api/species/stats - 获取物种统计",
+            "/api/hotspots/hotspot - 创建观鸟热点",
+            "/api/hotspots/hotspot/{id} - 获取热点详情",
+            "/api/hotspots/hotspots - 获取热点列表",
+            "/api/hotspots/hotspot/{id}/visit - 记录热点访问",
+            "/api/hotspots/subscription - 创建地点订阅",
+            "/api/hotspots/subscriptions - 获取订阅列表",
+            "/api/hotspots/hotspots/map - 获取热点地图",
+            "/api/hotspots/hotspots/heatmap - 获取热点热力图",
+            "/api/hotspots/hotspots/recommended - 获取推荐热点",
         ]
     }
 

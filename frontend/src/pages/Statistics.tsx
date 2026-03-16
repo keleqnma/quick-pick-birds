@@ -14,6 +14,7 @@ export default function Statistics() {
   const [monthlyData, setMonthlyData] = useState<any[]>([])
   const [topSpecies, setTopSpecies] = useState<any[]>([])
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [showAnnualReport, setShowAnnualReport] = useState(false)
 
   useEffect(() => {
     loadStatistics()
@@ -60,6 +61,24 @@ export default function Statistics() {
 
   return (
     <div className="container">
+      <div className="page-header">
+        <h2>统计图表</h2>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            className="btn btn-outline"
+            onClick={() => window.open(`/annual-report?year=${selectedYear}`, '_blank')}
+          >
+            📊 年度报告
+          </button>
+          <button
+            className="btn btn-outline"
+            onClick={() => window.location.href = '/achievements'}
+          >
+            🏆 成就系统
+          </button>
+        </div>
+      </div>
+
       {/* 概览统计卡片 */}
       {overview && (
         <div className="card mb-2">

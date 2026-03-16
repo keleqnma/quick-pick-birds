@@ -391,3 +391,240 @@ async def get_overview():
             "species": month_species or 0
         }
     }
+
+
+@router.get("/annual-report")
+async def get_annual_report(
+    year: int = Query(..., description="年份"),
+    include_html: bool = Query(False, description="是否包含 HTML 报告")
+):
+    """
+    获取年度综合报告（参照 eBird Year Report）
+
+    包含：
+    - 年度总览
+    - 月度趋势
+    - 物种排行榜
+    - 最佳观测日
+    - 新增物种统计
+    - 观测地点分布
+    """
+    from datetime import datetime
+
+    conn = database.get_connection()
+    c = conn.cursor()
+
+    start_date = f"{year}-01-01"
+    end_date = f"{year + 1}-01-01"
+
+    # === 年度总览 ===
+    c.execute("SELECT COUNT(*) FROM photos WHERE capture_time >= ? AND capture_time < ?", (start_date, end_date))
+    total_photos = c.fetchone()[0] or 0
+
+    c.execute("""
+        SELECT COUNT(DISTINCT bd.species_cn)
+        FROM bird_detections bd
+        JOIN photos p ON bd.photo_id = p.id
+        WHERE p.capture_time >= ? AND p.capture_time < ?
+    """, (start_date, end_date))
+    total_species = c.fetchone()[0] or 0
+
+    c.execute("SELECT COUNT(DISTINCT DATE(capture_time)) FROM photos WHERE capture_time >= ? AND capture_time < ?", (start_date, end_date))
+    observation_days = c.fetchone()[0] or 0
+
+    c.execute("""
+        SELECT SUM(count) FROM (
+            SELECT COUNT(*) as count
+            FROM bird_detections bd
+            JOIN photos p ON bd.photo_id = p.id
+            WHERE p.capture_time >= ? AND p.capture_time < ?
+            GROUP BY DATE(p.capture_time)
+        )
+    """, (start_date, end_date))
+    total_individuals = c.fetchone()[0] or 0
+
+    # === 最佳观测日（观测到最多物种的日期） ===
+    c.execute("""
+        SELECT DATE(p.capture_time) as date, COUNT(DISTINCT bd.species_cn) as species_count
+        FROM photos p
+        LEFT JOIN bird_detections bd ON p.id = bd.photo_id
+        WHERE p.capture_time >= ? AND p.capture_time < ?
+        GROUP BY DATE(p.capture_time)
+        ORDER BY species_count DESC
+        LIMIT 5
+    """, (start_date, end_date))
+    best_days = [{"date": row[0], "species_count": row[1]} for row in c.fetchall()]
+
+    # === 月度统计 ===
+    c.execute("""
+        SELECT
+            strftime('%m', p.capture_time) as month,
+            COUNT(DISTINCT p.id) as photo_count,
+            COUNT(DISTINCT bd.species_cn) as species_count,
+            COUNT(DISTINCT DATE(p.capture_time)) as observation_days
+        FROM photos p
+        LEFT JOIN bird_detections bd ON p.id = bd.photo_id
+        WHERE p.capture_time >= ? AND p.capture_time < ?
+        GROUP BY strftime('%m', p.capture_time)
+        ORDER BY month
+    """, (start_date, end_date))
+
+    monthly_data = []
+    for row in c.fetchall():
+        monthly_data.append({
+            "month": int(row[0]),
+            "photos": row[1],
+            "species": row[2],
+            "days": row[3]
+        })
+
+    # === 物种排行榜 ===
+    c.execute("""
+        SELECT bd.species_cn, bd.species_en, bd.scientific_name, COUNT(*) as count
+        FROM bird_detections bd
+        JOIN photos p ON bd.photo_id = p.id
+        WHERE p.capture_time >= ? AND p.capture_time < ?
+        GROUP BY bd.species_cn
+        ORDER BY count DESC
+        LIMIT 10
+    """, (start_date, end_date))
+
+    top_species = []
+    for row in c.fetchall():
+        top_species.append({
+            "species_cn": row[0] or "未知",
+            "species_en": row[1] or "",
+            "scientific_name": row[2] or "",
+            "count": row[3]
+        })
+
+    # === 新增物种（首次观测的物种） ===
+    c.execute("""
+        SELECT bd.species_cn, bd.species_en, bd.scientific_name, MIN(DATE(p.capture_time)) as first_seen
+        FROM bird_detections bd
+        JOIN photos p ON bd.photo_id = p.id
+        WHERE p.capture_time >= ? AND p.capture_time < ?
+        GROUP BY bd.species_cn
+        ORDER BY first_seen
+    """, (start_date, end_date))
+
+    new_species = []
+    for row in c.fetchall():
+        new_species.append({
+            "species_cn": row[0] or "未知",
+            "first_seen": row[3]
+        })
+
+    # === 观测地点统计 ===
+    c.execute("""
+        SELECT ROUND(gps_lat, 2), ROUND(gps_lng, 2), COUNT(DISTINCT DATE(p.capture_time)) as days
+        FROM photos p
+        WHERE p.gps_lat IS NOT NULL AND p.gps_lng IS NOT NULL
+          AND p.capture_time >= ? AND p.capture_time < ?
+        GROUP BY ROUND(gps_lat, 2), ROUND(gps_lng, 2)
+        ORDER BY days DESC
+        LIMIT 5
+    """, (start_date, end_date))
+
+    top_locations = []
+    for row in c.fetchall():
+        top_locations.append({
+            "lat": row[0],
+            "lng": row[1],
+            "days": row[2]
+        })
+
+    conn.close()
+
+    return {
+        "year": year,
+        "summary": {
+            "total_photos": total_photos,
+            "total_species": total_species,
+            "observation_days": observation_days,
+            "total_individuals": total_individuals,
+            "avg_species_per_day": round(total_species / observation_days, 2) if observation_days > 0 else 0
+        },
+        "best_days": best_days,
+        "monthly_data": monthly_data,
+        "top_species": top_species,
+        "new_species": new_species,
+        "top_locations": top_locations
+    }
+
+
+@router.get("/life-stats")
+async def get_life_stats():
+    """
+    获取生命周期统计（个人观测生涯总计）
+
+    参照 eBird Life List 功能
+    """
+    conn = database.get_connection()
+    c = conn.cursor()
+
+    # 首次和最近观测日期
+    c.execute("SELECT MIN(DATE(capture_time)), MAX(DATE(capture_time)) FROM photos")
+    row = c.fetchone()
+    first_observation = row[0]
+    last_observation = row[1]
+
+    # 计算观测年数
+    years = 0
+    if first_observation and last_observation:
+        from datetime import datetime
+        first_dt = datetime.fromisoformat(first_observation)
+        last_dt = datetime.fromisoformat(last_observation)
+        years = last_dt.year - first_dt.year + 1
+
+    # 总计
+    c.execute("SELECT COUNT(*) FROM photos")
+    total_photos = c.fetchone()[0] or 0
+
+    c.execute("SELECT COUNT(DISTINCT species_cn) FROM bird_detections WHERE species_cn IS NOT NULL")
+    total_species = c.fetchone()[0] or 0
+
+    c.execute("SELECT COUNT(DISTINCT DATE(capture_time)) FROM photos")
+    total_days = c.fetchone()[0] or 0
+
+    c.execute("SELECT COUNT(*) FROM bird_detections")
+    total_detections = c.fetchone()[0] or 0
+
+    # 按目统计
+    c.execute("""
+        SELECT COUNT(DISTINCT species_cn) FROM bird_detections
+        WHERE species_cn IS NOT NULL AND species_cn != ''
+    """)
+    unique_species = c.fetchone()[0] or 0
+
+    # 观测年份分布
+    c.execute("""
+        SELECT strftime('%Y', capture_time) as year, COUNT(*) as photos,
+               COUNT(DISTINCT species_cn) as species
+        FROM photos
+        GROUP BY strftime('%Y', capture_time)
+        ORDER BY year DESC
+    """)
+
+    year_stats = []
+    for row in c.fetchall():
+        year_stats.append({
+            "year": row[0],
+            "photos": row[1],
+            "species": row[2]
+        })
+
+    conn.close()
+
+    return {
+        "first_observation": first_observation,
+        "last_observation": last_observation,
+        "years_active": years,
+        "totals": {
+            "photos": total_photos,
+            "species": total_species,
+            "observation_days": total_days,
+            "detections": total_detections
+        },
+        "year_by_year": year_stats
+    }

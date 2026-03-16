@@ -759,7 +759,7 @@ input[type="range"]::-moz-range-thumb:hover {
   padding: 20px;
 }
 
-.modal-content {
+.modal {
   background: var(--card-background);
   border-radius: var(--radius-lg);
   max-width: 600px;
@@ -785,7 +785,15 @@ input[type="range"]::-moz-range-thumb:hover {
   padding: 24px;
 }
 
-.btn-close {
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+.modal-close {
   background: none;
   border: none;
   font-size: 1.5rem;

@@ -150,6 +150,85 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_checklist_items_species ON checklist_items(species_cn)
     """)
 
+    # 观鸟热点表 - 记录热门观测地点 (参照 eBird Hotspots)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS hotspots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            gps_lat REAL NOT NULL,
+            gps_lng REAL NOT NULL,
+            radius_meters REAL DEFAULT 500,
+            city TEXT,
+            province TEXT,
+            country TEXT DEFAULT '中国',
+            habitat_type TEXT,
+            access_level TEXT DEFAULT 'public',
+            created_by TEXT,
+            visit_count INTEGER DEFAULT 0,
+            total_species INTEGER DEFAULT 0,
+            total_checklists INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_hotspots_location ON hotspots(gps_lat, gps_lng)
+    """)
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_hotspots_name ON hotspots(name)
+    """)
+
+    # 热点访问记录表
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS hotspot_visits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            hotspot_id INTEGER NOT NULL,
+            checklist_id INTEGER,
+            visit_date TEXT NOT NULL,
+            observer_name TEXT,
+            species_count INTEGER DEFAULT 0,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (hotspot_id) REFERENCES hotspots(id) ON DELETE CASCADE,
+            FOREIGN KEY (checklist_id) REFERENCES checklists(id) ON DELETE SET NULL
+        )
+    """)
+
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_hotspot_visits_hotspot ON hotspot_visits(hotspot_id)
+    """)
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_hotspot_visits_date ON hotspot_visits(visit_date)
+    """)
+
+    # 地点订阅表
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS location_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_name TEXT NOT NULL,
+            location_name TEXT NOT NULL,
+            gps_lat REAL,
+            gps_lng REAL,
+            radius_km REAL DEFAULT 5,
+            notification_enabled BOOLEAN DEFAULT 1,
+            email_enabled BOOLEAN DEFAULT 0,
+            wechat_enabled BOOLEAN DEFAULT 0,
+            min_species_count INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            last_notified_at TEXT,
+            is_active BOOLEAN DEFAULT 1
+        )
+    """)
+
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON location_subscriptions(user_name)
+    """)
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_location ON location_subscriptions(location_name)
+    """)
+
     conn.commit()
     conn.close()
 
